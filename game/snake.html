@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>贪吃蛇</title>
+	<style>/*网站设置*/
+		:root {
+			color-scheme: dark;
+			font-family: Arial, sans-serif;
+		}
+
+		body {
+			align-items: center;
+			background: #090d12;
+			display: flex;
+			justify-content: center;
+			margin: 0;
+			min-height: 100vh;
+		}
+
+		.game {
+			text-align: center;
+		}
+
+		h1 {
+			color: #f3f4f6;
+			font-size: 28px;
+			margin: 0 0 12px;
+		}
+
+		.score {
+			color: #d1d5db;
+			font-size: 18px;
+			margin-bottom: 8px;
+		}
+
+		.high-score {
+			color: #facc15;
+			font-size: 16px;
+			margin-bottom: 8px;
+		}
+
+		.status {
+			color: #86efac;
+			font-size: 16px;
+			margin-bottom: 12px;
+		}
+
+		canvas {
+			background: #111827;
+			border: 2px solid #374151;
+			display: block;
+			height: 400px;
+			width: 400px;
+		}
+
+		.restart-button {
+			background: #16a34a;
+			border: 0;
+			border-radius: 6px;
+			color: #ffffff;
+			cursor: pointer;
+			font-size: 15px;
+			margin-top: 14px;
+			padding: 9px 18px;
+		}
+
+		.restart-button:hover {
+			background: #22c55e;
+		}
+
+		.reset-button {
+			background: #374151;
+			border: 0;
+			border-radius: 6px;
+			color: #e5e7eb;
+			cursor: pointer;
+			font-size: 14px;
+			margin-left: 8px;
+			padding: 9px 18px;
+		}
+
+		.reset-button:hover {
+			background: #4b5563;
+		}
+
+		.hint {
+			color: #9ca3af;
+			font-size: 14px;
+			margin-top: 12px;
+		}
+	</style>
+</head>
+<body>
+	<main class="game">
+		<h1>贪吃蛇</h1>
+		<div class="score">当前得分：<span id="score">0</span></div>
+		<div class="high-score">历史最高分：<span id="highScore">0</span></div>
+		<div class="status" id="status">游戏进行中</div>
+		<canvas id="gameCanvas" width="400" height="400" aria-label="贪吃蛇游戏画布"></canvas>
+		<button class="restart-button" id="restartButton" type="button">重新开始</button>
+		<button class="reset-button" id="resetButton" type="button">重置记录</button>
+		<div class="hint">请按键盘方向键移动蛇，游戏结束后按空格键重新开始</div>
+	</main>
+
+	<script>
+		const canvas = document.getElementById('gameCanvas');
+		const context = canvas.getContext('2d');
+		const scoreElement = document.getElementById('score');
+		const highScoreElement = document.getElementById('highScore');
+		const statusElement = document.getElementById('status');
+		const restartButton = document.getElementById('restartButton');
+		const resetButton = document.getElementById('resetButton');
+		const gridSize = 20;
+		const tileCount = canvas.width / gridSize;
+		const gameSpeed = 150;
+		const highScoreStorageKey = 'snakeHighScore';
+
+		let snake;
+		let direction;
+		let nextDirection;
+		let food;
+		let score;
+		let highScore = Number.parseInt(localStorage.getItem(highScoreStorageKey), 10) || 0;
+		let gameOver;
+		let gameTimer;
+
+		highScoreElement.textContent = highScore;
+
+		function startGame() {
+            // 1. 重置蛇到初始位置
+			snake = [
+				{ x: 11, y: 10 },
+				{ x: 10, y: 10 },
+				{ x: 9, y: 10 }
+			];
+            // 2. 方向设为向右
+			direction = { x: 1, y: 0 };
+			nextDirection = { x: 1, y: 0 };
+			score = 0;
+			gameOver = false;
+			scoreElement.textContent = score;
+			statusElement.textContent = '游戏进行中';
+			statusElement.style.color = '#86efac';
+			placeFood();
+			clearInterval(gameTimer);
+			gameTimer = setInterval(updateGame, gameSpeed);
+			drawGame();
+		}
+
+		function placeFood() {
+			do {
+				food = {
+					x: Math.floor(Math.random() * tileCount),//生成随机数
+					y: Math.floor(Math.random() * tileCount)
+				};
+			} while (snake.some((segment) => segment.x === food.x && segment.y === food.y));
+		}//食物与蛇身重叠时重新生成食物位置
+
+		function updateGame() {
+			if (gameOver) {
+				return;//游戏结束时不再更新游戏状态
+			}
+
+			direction = nextDirection;
+			const head = {
+				x: snake[0].x + direction.x,
+				y: snake[0].y + direction.y
+			};
+            // 检查蛇是否撞墙或撞到自己
+			const hitsWall = head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount;
+			const eatsFood = head.x === food.x && head.y === food.y;
+			const bodyToCheck = eatsFood ? snake : snake.slice(0, -1);
+			const hitsSelf = bodyToCheck.some((segment) => segment.x === head.x && segment.y === head.y);
+
+			if (hitsWall || hitsSelf) {
+				endGame();
+				return;
+			}
+
+			snake.unshift(head);
+
+			if (eatsFood) {
+				score += 1;
+				scoreElement.textContent = score;
+				placeFood();
+			} else {
+				snake.pop();
+			}
+
+			drawGame();
+		}
+
+		function drawGame() {
+			context.fillStyle = '#111827';
+			context.fillRect(0, 0, canvas.width, canvas.height);
+
+			context.strokeStyle = '#1f2937';
+			context.lineWidth = 1;
+			for (let line = 1; line < tileCount; line += 1) {
+				const position = line * gridSize + 0.5;
+				context.beginPath();
+				context.moveTo(position, 0);
+				context.lineTo(position, canvas.height);
+				context.stroke();
+				context.beginPath();
+				context.moveTo(0, position);
+				context.lineTo(canvas.width, position);
+				context.stroke();
+			}
+
+			context.shadowColor = '#ef4444';
+			context.shadowBlur = 12;
+			context.fillStyle = '#ef4444';
+			context.fillRect(food.x * gridSize + 1, food.y * gridSize + 1, gridSize - 2, gridSize - 2);
+			context.shadowBlur = 0;
+
+			snake.forEach((segment, index) => {
+				const gradient = context.createLinearGradient(
+					segment.x * gridSize,
+					segment.y * gridSize,
+					segment.x * gridSize + gridSize,
+					segment.y * gridSize + gridSize
+				);
+				gradient.addColorStop(0, index === 0 ? '#86efac' : '#4ade80');
+				gradient.addColorStop(1, index === 0 ? '#16a34a' : '#15803d');
+				context.fillStyle = gradient;
+				context.fillRect(segment.x * gridSize + 1, segment.y * gridSize + 1, gridSize);
+			});
+
+			if (gameOver) {
+				statusElement.textContent = '游戏结束';
+				statusElement.style.color = '#f87171';
+				context.fillStyle = 'rgba(17, 24, 39, 0.78)';
+				context.fillRect(0, 0, canvas.width, canvas.height);
+				context.fillStyle = '#ffffff';
+				context.font = 'bold 28px Arial';
+				context.textAlign = 'center';
+				context.fillText('游戏结束', canvas.width / 2, canvas.height / 2 - 10);
+				context.font = '16px Arial';
+				context.fillText('按空格键重新开始', canvas.width / 2, canvas.height / 2 + 25);
+			}
+		}
+
+		function endGame() {
+			gameOver = true;
+			clearInterval(gameTimer);
+			if (score > highScore) {
+				highScore = score;
+				localStorage.setItem(highScoreStorageKey, highScore);
+				highScoreElement.textContent = highScore;
+			}
+			drawGame();
+		}
+
+		restartButton.addEventListener('click', startGame);
+		resetButton.addEventListener('click', () => {
+			localStorage.removeItem(highScoreStorageKey);
+			highScore = 0;
+			highScoreElement.textContent = highScore;
+		});
+
+		document.addEventListener('keydown', (event) => {
+			const keyDirections = {
+				ArrowUp: { x: 0, y: -1 },
+				ArrowDown: { x: 0, y: 1 },
+				ArrowLeft: { x: -1, y: 0 },
+				ArrowRight: { x: 1, y: 0 }
+			};
+
+			if (event.code === 'Space' && gameOver) {
+				event.preventDefault();
+				startGame();
+				return;
+			}
+
+			const newDirection = keyDirections[event.key];
+			if (!newDirection) {
+				return;
+			}
+
+			event.preventDefault();
+			const isReverse = newDirection.x + direction.x === 0 && newDirection.y + direction.y === 0;
+			if (!isReverse) {
+				nextDirection = newDirection;
+			}
+		});
+
+		startGame();
+	</script>
+</body>
+</html>

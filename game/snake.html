@@ -21,6 +21,7 @@
 
 		.game {
 			text-align: center;
+			width: min(100% - 32px, 520px);
 		}
 
 		h1 {
@@ -29,16 +30,36 @@
 			margin: 0 0 12px;
 		}
 
-		.score {
-			color: #d1d5db;
-			font-size: 18px;
-			margin-bottom: 8px;
+		.scoreboard {
+			display: grid;
+			gap: 12px;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			margin: 0 auto 14px;
+			text-align: left;
 		}
 
-		.high-score {
-			color: #facc15;
+		.score-panel {
+			background: #111827;
+			border: 1px solid #374151;
+			border-radius: 8px;
+			padding: 14px 16px;
+		}
+
+		.score-panel h2 {
+			color: #e5e7eb;
+			font-size: 15px;
+			margin: 0 0 10px;
+		}
+
+		.score-line {
+			color: #d1d5db;
 			font-size: 16px;
-			margin-bottom: 8px;
+			line-height: 1.7;
+		}
+
+		.score-line strong {
+			color: #facc15;
+			font-size: 20px;
 		}
 
 		.status {
@@ -47,12 +68,29 @@
 			margin-bottom: 12px;
 		}
 
+		.ai-status {
+			color: #93c5fd;
+			font-size: 14px;
+			margin: 0 0 12px;
+		}
+
 		canvas {
 			background: #111827;
 			border: 2px solid #374151;
 			display: block;
 			height: 400px;
 			width: 400px;
+		}
+
+		.controls {
+			display: flex;
+			gap: 8px;
+			justify-content: center;
+			margin-top: 14px;
+		}
+
+		.controls button {
+			margin: 0;
 		}
 
 		.restart-button {
@@ -77,12 +115,26 @@
 			color: #e5e7eb;
 			cursor: pointer;
 			font-size: 14px;
-			margin-left: 8px;
 			padding: 9px 18px;
 		}
 
 		.reset-button:hover {
 			background: #4b5563;
+		}
+
+		.ai-button {
+			background: #2563eb;
+			border: 0;
+			border-radius: 6px;
+			color: #ffffff;
+			cursor: pointer;
+			font-size: 15px;
+			margin-top: 14px;
+			padding: 9px 18px;
+		}
+
+		.ai-button:hover {
+			background: #3b82f6;
 		}
 
 		.hint {
@@ -95,12 +147,25 @@
 <body>
 	<main class="game">
 		<h1>贪吃蛇</h1>
-		<div class="score">当前得分：<span id="score">0</span></div>
-		<div class="high-score">历史最高分：<span id="highScore">0</span></div>
+		<div class="scoreboard">
+			<section class="score-panel" aria-label="玩家记录">
+				<h2>玩家记录</h2>
+				<div class="score-line">当前得分：<strong id="score">0</strong></div>
+				<div class="score-line">历史最高分：<strong id="highScore">0</strong></div>
+			</section>
+			<section class="score-panel" aria-label="AI演示记录">
+				<h2>AI演示</h2>
+				<div class="score-line">已吃食物：<strong id="foodCount">0</strong></div>
+				<div class="score-line">AI最高数量：<strong id="aiHighScore">0</strong></div>
+			</section>
+		</div>
 		<div class="status" id="status">游戏进行中</div>
 		<canvas id="gameCanvas" width="400" height="400" aria-label="贪吃蛇游戏画布"></canvas>
-		<button class="restart-button" id="restartButton" type="button">重新开始</button>
-		<button class="reset-button" id="resetButton" type="button">重置记录</button>
+		<div class="controls">
+			<button class="restart-button" id="restartButton" type="button">重新开始</button>
+			<button class="reset-button" id="resetButton" type="button">重置玩家记录</button>
+			<button class="ai-button" id="aiButton" type="button">AI演示</button>
+		</div>
 		<div class="hint">请按键盘方向键移动蛇，游戏结束后按空格键重新开始</div>
 	</main>
 
@@ -108,14 +173,24 @@
 		const canvas = document.getElementById('gameCanvas');
 		const context = canvas.getContext('2d');
 		const scoreElement = document.getElementById('score');
+		const foodCountElement = document.getElementById('foodCount');
 		const highScoreElement = document.getElementById('highScore');
+		const aiHighScoreElement = document.getElementById('aiHighScore');
 		const statusElement = document.getElementById('status');
 		const restartButton = document.getElementById('restartButton');
 		const resetButton = document.getElementById('resetButton');
+		const aiButton = document.getElementById('aiButton');
 		const gridSize = 20;
 		const tileCount = canvas.width / gridSize;
 		const gameSpeed = 150;
 		const highScoreStorageKey = 'snakeHighScore';
+		const aiHighScoreStorageKey = 'snakeAiHighScore';
+		const movementDirections = [
+			{ x: 0, y: -1 },
+			{ x: 1, y: 0 },
+			{ x: 0, y: 1 },
+			{ x: -1, y: 0 }
+		];
 
 		let snake;
 		let direction;
@@ -123,10 +198,13 @@
 		let food;
 		let score;
 		let highScore = Number.parseInt(localStorage.getItem(highScoreStorageKey), 10) || 0;
+		let aiHighScore = Number.parseInt(localStorage.getItem(aiHighScoreStorageKey), 10) || 0;
 		let gameOver;
 		let gameTimer;
+		let aiMode = false;
 
 		highScoreElement.textContent = highScore;
+		aiHighScoreElement.textContent = aiHighScore;
 
 		function startGame() {
             // 1. 重置蛇到初始位置
@@ -140,9 +218,16 @@
 			nextDirection = { x: 1, y: 0 };
 			score = 0;
 			gameOver = false;
-			scoreElement.textContent = score;
-			statusElement.textContent = '游戏进行中';
-			statusElement.style.color = '#86efac';
+			if (aiMode) {
+				foodCountElement.textContent = score;
+				statusElement.textContent = 'AI演示进行中';
+				statusElement.style.color = '#93c5fd';
+			} else {
+				scoreElement.textContent = score;
+				statusElement.textContent = '游戏进行中';
+				statusElement.style.color = '#86efac';
+			}
+			aiButton.textContent = aiMode ? '停止AI演示' : 'AI演示';
 			placeFood();
 			clearInterval(gameTimer);
 			gameTimer = setInterval(updateGame, gameSpeed);
@@ -161,6 +246,10 @@
 		function updateGame() {
 			if (gameOver) {
 				return;//游戏结束时不再更新游戏状态
+			}
+
+			if (aiMode) {
+				nextDirection = chooseSafeAiDirection();
 			}
 
 			direction = nextDirection;
@@ -183,13 +272,127 @@
 
 			if (eatsFood) {
 				score += 1;
-				scoreElement.textContent = score;
+				if (aiMode) {
+					foodCountElement.textContent = score;
+				} else {
+					scoreElement.textContent = score;
+				}
 				placeFood();
 			} else {
 				snake.pop();
 			}
 
 			drawGame();
+		}
+
+		function chooseSafeAiDirection() {
+			const legalDirections = getLegalDirections();
+			const safeDirections = legalDirections.filter((step) => canReachTail(simulateMove(step)));
+			const foodPath = findPathToFood();
+			const foodDirection = foodPath[0];
+			const safeFoodDirection = safeDirections.find((step) => sameDirection(step, foodDirection));
+
+			if (safeFoodDirection) {
+				return safeFoodDirection;
+			}
+
+			if (safeDirections.length > 0) {
+				return safeDirections.sort((first, second) =>
+					manhattanDistance(getNextHead(first), food) - manhattanDistance(getNextHead(second), food)
+				)[0];
+			}
+
+			return legalDirections[0] || nextDirection;
+		}
+
+		function getLegalDirections() {
+			return movementDirections.filter((step) => {
+				const isReverse = step.x + direction.x === 0 && step.y + direction.y === 0;
+				const nextHead = getNextHead(step);
+				const outsideBoard = nextHead.x < 0 || nextHead.x >= tileCount || nextHead.y < 0 || nextHead.y >= tileCount;
+				const eatsFood = nextHead.x === food.x && nextHead.y === food.y;
+				const bodyToCheck = eatsFood ? snake : snake.slice(0, -1);
+				const hitsSelf = bodyToCheck.some((segment) => segment.x === nextHead.x && segment.y === nextHead.y);
+
+				return !isReverse && !outsideBoard && !hitsSelf;
+			});
+		}
+
+		function getNextHead(step) {
+			return { x: snake[0].x + step.x, y: snake[0].y + step.y };
+		}
+
+		function simulateMove(step) {
+			const nextHead = getNextHead(step);
+			const eatsFood = nextHead.x === food.x && nextHead.y === food.y;
+			return eatsFood ? [nextHead, ...snake] : [nextHead, ...snake.slice(0, -1)];
+		}
+
+		function canReachTail(simulatedSnake) {
+			if (simulatedSnake.length <= 1) {
+				return true;
+			}
+
+			const target = simulatedSnake[simulatedSnake.length - 1];
+			const queue = [{ x: simulatedSnake[0].x, y: simulatedSnake[0].y }];
+			const visited = new Set([`${simulatedSnake[0].x},${simulatedSnake[0].y}`]);
+			const body = simulatedSnake.slice(1, -1);
+
+			while (queue.length > 0) {
+				const current = queue.shift();
+				if (current.x === target.x && current.y === target.y) {
+					return true;
+				}
+
+				for (const step of movementDirections) {
+					const next = { x: current.x + step.x, y: current.y + step.y };
+					const key = `${next.x},${next.y}`;
+					const outsideBoard = next.x < 0 || next.x >= tileCount || next.y < 0 || next.y >= tileCount;
+					const hitsBody = body.some((segment) => segment.x === next.x && segment.y === next.y);
+
+					if (!outsideBoard && !hitsBody && !visited.has(key)) {
+						visited.add(key);
+						queue.push(next);
+					}
+				}
+			}
+
+			return false;
+		}
+
+		function manhattanDistance(first, second) {
+			return Math.abs(first.x - second.x) + Math.abs(first.y - second.y);
+		}
+
+		function sameDirection(first, second) {
+			return first && second && first.x === second.x && first.y === second.y;
+		}
+
+		function findPathToFood() {
+			const queue = [{ x: snake[0].x, y: snake[0].y, path: [] }];
+			const visited = new Set([`${snake[0].x},${snake[0].y}`]);
+			const body = snake.slice(1, -1);
+
+			while (queue.length > 0) {
+				const current = queue.shift();
+				if (current.x === food.x && current.y === food.y) {
+					return current.path;
+				}
+
+				for (const step of movementDirections) {
+					const next = { x: current.x + step.x, y: current.y + step.y };
+					const key = `${next.x},${next.y}`;
+					const outsideBoard = next.x < 0 || next.x >= tileCount || next.y < 0 || next.y >= tileCount;
+					const hitsSnake = body.some((segment) => segment.x === next.x && segment.y === next.y);
+
+					if (!outsideBoard && !hitsSnake && !visited.has(key)) {
+						visited.add(key);
+						queue.push({ x: next.x, y: next.y, path: [...current.path, step] });
+					}
+				}
+			}
+
+			return [];
 		}
 
 		function drawGame() {
@@ -226,7 +429,7 @@
 				gradient.addColorStop(0, index === 0 ? '#86efac' : '#4ade80');
 				gradient.addColorStop(1, index === 0 ? '#16a34a' : '#15803d');
 				context.fillStyle = gradient;
-				context.fillRect(segment.x * gridSize + 1, segment.y * gridSize + 1, gridSize);
+				context.fillRect(segment.x * gridSize + 1, segment.y * gridSize + 1, gridSize - 2, gridSize - 2);
 			});
 
 			if (gameOver) {
@@ -246,7 +449,13 @@
 		function endGame() {
 			gameOver = true;
 			clearInterval(gameTimer);
-			if (score > highScore) {
+			if (aiMode) {
+				if (score > aiHighScore) {
+					aiHighScore = score;
+					localStorage.setItem(aiHighScoreStorageKey, aiHighScore);
+					aiHighScoreElement.textContent = aiHighScore;
+				}
+			} else if (score > highScore) {
 				highScore = score;
 				localStorage.setItem(highScoreStorageKey, highScore);
 				highScoreElement.textContent = highScore;
@@ -255,6 +464,11 @@
 		}
 
 		restartButton.addEventListener('click', startGame);
+		aiButton.addEventListener('click', () => {
+			aiMode = !aiMode;
+			aiButton.textContent = aiMode ? '停止AI演示' : 'AI演示';
+			startGame();
+		});
 		resetButton.addEventListener('click', () => {
 			localStorage.removeItem(highScoreStorageKey);
 			highScore = 0;

@@ -38,6 +38,25 @@
             <li>C / C++</li>
         </ul>
     </section>
+    <section class="projects">
+    <h2>我的项目</h2>
+    <div class="project-card">
+        <h3>🐍 贪吃蛇</h3>
+        <p>经典贪吃蛇游戏，支持 AI 自动演示</p>
+        <a href="game/snake.html" class="btn" onclick="openGame()">开始游戏 →</a>
+    </div>
+</section>
+
+<!-- 全屏游戏遮罩 -->
+<div id="game-modal" class="modal-overlay">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeGame()">✕</button>
+        <iframe id="game-frame" 
+                src="" 
+                frameborder="0">
+        </iframe>
+    </div>
+</div>
 
     <!-- ═══════════════════════════════════════ -->
     <!-- 区块4：联系方式（contact）            -->

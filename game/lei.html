@@ -23,6 +23,7 @@
 
     .game-container {
       background: #4a5b6b;
+      width: min(100%, 560px);
       padding: 24px 28px 28px;
       border-radius: 32px;
       box-shadow: 0 20px 30px rgba(0, 0, 0, 0.5), inset 0 1px 4px rgba(255, 255, 255, 0.1);
@@ -33,28 +34,30 @@
     }
 
     .status-panel {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: stretch;
       width: 100%;
       background: #2d3b47;
-      padding: 12px 20px;
-      border-radius: 60px;
+      padding: 14px;
+      border-radius: 24px;
       box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
       color: #f0e6d2;
       font-weight: bold;
       letter-spacing: 0.5px;
+      gap: 10px;
     }
 
     .info-item {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
       background: #1e2a32;
-      padding: 6px 16px;
-      border-radius: 40px;
+      padding: 9px 13px;
+      border-radius: 14px;
       box-shadow: inset 0 1px 3px #00000080;
-      font-size: 1.2rem;
+      font-size: 1rem;
     }
 
     .info-item span:first-child {
@@ -63,13 +66,17 @@
     }
 
     .info-item span:last-child {
-      min-width: 2.5rem;
+      min-width: 3.5rem;
       text-align: center;
       color: #ffd966;
       font-family: 'Courier New', monospace;
     }
 
     .game-state {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      order: -1;
+      text-align: center;
       font-size: 1.1rem;
       background: #1e2a32;
       padding: 6px 20px;
@@ -77,6 +84,14 @@
       color: #a3d0e0;
       box-shadow: inset 0 1px 3px #00000080;
       transition: all 0.2s;
+    }
+
+    .best-time {
+      border: 1px solid #d5ad4d;
+    }
+
+    .round-info {
+      border: 1px solid #76c7c0;
     }
 
     .board {
@@ -177,6 +192,15 @@
       box-shadow: 0 1px 0 #a07d2c, 0 8px 12px rgba(0, 0, 0, 0.4);
     }
 
+    .ai-btn {
+      background: #76c7c0;
+      box-shadow: 0 5px 0 #43847f, 0 8px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .ai-btn:active {
+      box-shadow: 0 1px 0 #43847f, 0 8px 12px rgba(0, 0, 0, 0.4);
+    }
+
     .game-state.win {
       color: #a3e0b0;
       background: #1e3a2a;
@@ -186,24 +210,51 @@
       color: #f4a2a2;
       background: #3a1e1e;
     }
+
+    @media (max-width: 520px) {
+      .game-container {
+        padding: 16px;
+        border-radius: 24px;
+      }
+
+      .board {
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        grid-template-rows: repeat(9, minmax(0, 1fr));
+        width: 100%;
+        aspect-ratio: 1;
+      }
+
+      .cell {
+        font-size: clamp(0.9rem, 5vw, 1.4rem);
+      }
+    }
   </style>
 </head>
 <body>
 <div class="game-container">
   <div class="status-panel">
+    <div class="game-state" id="game-state">🙂 游戏中</div>
     <div class="info-item">
       <span>💣</span>
       <span id="mine-counter">10</span>
     </div>
-    <div class="game-state" id="game-state">🙂 游戏中</div>
     <div class="info-item">
       <span>⏱️</span>
       <span id="timer">000</span>
+    </div>
+    <div class="info-item round-info">
+      <span>🏁 局数</span>
+      <span id="round-counter">0/5</span>
+    </div>
+    <div class="info-item best-time">
+      <span>🏆 历史最短</span>
+      <span id="best-time">--</span>
     </div>
   </div>
 
   <div class="board" id="board"></div>
 
+  <button class="reset-btn ai-btn" id="ai-btn">🤖 AI 演示</button>
   <button class="reset-btn" id="reset-btn">🔄 重新开始</button>
 </div>
 
@@ -213,6 +264,7 @@
     const ROWS = 9;
     const COLS = 9;
     const TOTAL_MINES = 10;
+    const AI_TARGET_WINS = 5;
 
     // ---------- 游戏状态 ----------
     let board = [];           // 真实雷区: true=雷, false=安全
@@ -227,13 +279,42 @@
     let revealedCount = 0;    // 已翻开的安全格数量 (不含雷)
     let timerInterval = null;
     let secondsElapsed = 0;
+    let aiInterval = null;
+    let aiRestartTimeout = null;
+    let aiSessionActive = false;
+    let consecutiveWins = 0;
 
     // DOM 元素
     const boardEl = document.getElementById('board');
     const mineCounterEl = document.getElementById('mine-counter');
     const timerEl = document.getElementById('timer');
     const gameStateEl = document.getElementById('game-state');
+    const roundCounterEl = document.getElementById('round-counter');
+    const bestTimeEl = document.getElementById('best-time');
     const resetBtn = document.getElementById('reset-btn');
+    const BEST_TIME_KEY = 'minesweeper-best-time';
+
+    function getBestTime() {
+      const storedTime = Number(localStorage.getItem(BEST_TIME_KEY));
+      return Number.isFinite(storedTime) && storedTime >= 0 ? storedTime : null;
+    }
+
+    function formatTime(seconds) {
+      return `${String(seconds).padStart(3, '0')} 秒`;
+    }
+
+    function updateBestTimeDisplay() {
+      const bestTime = getBestTime();
+      bestTimeEl.textContent = bestTime === null ? '--' : formatTime(bestTime);
+    }
+
+    function recordBestTime() {
+      const bestTime = getBestTime();
+      if (bestTime === null || secondsElapsed < bestTime) {
+        localStorage.setItem(BEST_TIME_KEY, String(secondsElapsed));
+        updateBestTimeDisplay();
+      }
+    }
 
     // ---------- 初始化数据 ----------
     function initData() {
@@ -387,6 +468,7 @@
         gameActive = false;
         gameWin = true;
         stopTimer();
+        recordBestTime();
         updateGameStateDisplay('win', '🏆 你赢了！');
         // 自动标记所有未标记的雷 (可选)
         for (let r = 0; r < ROWS; r++) {
@@ -418,6 +500,126 @@
         clearInterval(timerInterval);
         timerInterval = null;
       }
+    }
+
+    // ---------- AI 自动演示 ----------
+    function clearAiTimers() {
+      if (aiInterval) {
+        clearInterval(aiInterval);
+        aiInterval = null;
+      }
+      if (aiRestartTimeout) {
+        clearTimeout(aiRestartTimeout);
+        aiRestartTimeout = null;
+      }
+    }
+
+    function stopAi() {
+      clearAiTimers();
+      aiSessionActive = false;
+    }
+
+    function aiStep() {
+      if (!gameActive) {
+        clearAiTimers();
+        if (gameWin) {
+          consecutiveWins++;
+          roundCounterEl.textContent = `${consecutiveWins}/${AI_TARGET_WINS}`;
+          if (consecutiveWins >= AI_TARGET_WINS) {
+            aiSessionActive = false;
+            updateGameStateDisplay('win', `🏆 连续通关 ${AI_TARGET_WINS} 关，成功！`);
+            return;
+          }
+          updateGameStateDisplay('win', `🏆 第 ${consecutiveWins} 局通关，准备下一局...`);
+        } else {
+          consecutiveWins = 0;
+          updateGameStateDisplay('lose', '💥 踩雷失败，准备重新开始...');
+        }
+
+        aiRestartTimeout = setTimeout(() => {
+          aiRestartTimeout = null;
+          if (!aiSessionActive) return;
+          startGame(true);
+          beginAiLoop();
+        }, 900);
+        return;
+      }
+
+      let madeMove = false;
+
+      for (let r = 0; r < ROWS && !madeMove; r++) {
+        for (let c = 0; c < COLS && !madeMove; c++) {
+          if (!revealed[r][c] || numbers[r][c] === 0) continue;
+
+          const unknown = [];
+          let markedMines = 0;
+          for (const [nr, nc] of getNeighbors(r, c)) {
+            if (flagged[nr][nc]) {
+              markedMines++;
+            } else if (!revealed[nr][nc]) {
+              unknown.push([nr, nc]);
+            }
+          }
+
+          if (unknown.length === 0) continue;
+
+          if (unknown.length === numbers[r][c] - markedMines) {
+            for (const [nr, nc] of unknown) {
+              toggleFlag(nr, nc);
+            }
+            madeMove = true;
+          } else if (markedMines === numbers[r][c]) {
+            for (const [nr, nc] of unknown) {
+              revealCell(nr, nc);
+            }
+            madeMove = true;
+          }
+        }
+      }
+
+      if (gameWin) {
+        return;
+      } else if (!madeMove) {
+        const candidates = [];
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (!revealed[r][c] && !flagged[r][c]) {
+              candidates.push([r, c]);
+            }
+          }
+        }
+
+        if (candidates.length === 0) {
+          stopAi();
+          updateGameStateDisplay('', '🤖 AI 无法继续');
+          return;
+        }
+
+        const [r, c] = candidates[Math.floor(Math.random() * candidates.length)];
+        revealCell(r, c);
+      }
+    }
+
+    function beginAiLoop() {
+      if (!aiSessionActive || !gameActive) return;
+      updateGameStateDisplay('', `🤖 AI 演示中（连续 ${consecutiveWins}/${AI_TARGET_WINS}）`);
+      roundCounterEl.textContent = `${consecutiveWins}/${AI_TARGET_WINS}`;
+      aiInterval = setInterval(aiStep, 450);
+      aiStep();
+    }
+
+    function startAi() {
+      stopAi();
+      consecutiveWins = 0;
+      roundCounterEl.textContent = `0/${AI_TARGET_WINS}`;
+      startGame();
+      aiSessionActive = true;
+      if (firstClick && !minesPlaced) {
+        revealCell(Math.floor(ROWS / 2), Math.floor(COLS / 2));
+      }
+
+      if (!gameActive) return;
+      beginAiLoop();
     }
 
     // ---------- 更新游戏状态显示 ----------
@@ -492,6 +694,7 @@
     function resetGame() {
       // 停止计时器
       stopTimer();
+      stopAi();
       // 重置数据
       initData();
       // 重置显示
@@ -520,11 +723,18 @@
     }
 
     // ---------- 启动 ----------
-    function startGame() {
+    function startGame(keepAiSession = false) {
+      if (keepAiSession) {
+        clearAiTimers();
+      } else {
+        stopAi();
+      }
       initEmptyBoard();
       mineCounterEl.textContent = TOTAL_MINES;
       timerEl.textContent = '000';
+      if (!keepAiSession) roundCounterEl.textContent = `0/${AI_TARGET_WINS}`;
       updateGameStateDisplay('', '🙂 游戏中');
+      updateBestTimeDisplay();
       renderBoard();
     }
 
@@ -533,6 +743,8 @@
       stopTimer();
       startGame();
     });
+
+    document.getElementById('ai-btn').addEventListener('click', startAi);
 
     // 页面加载启动
     startGame();

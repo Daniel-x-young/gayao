@@ -142,6 +142,73 @@
 			font-size: 14px;
 			margin-top: 12px;
 		}
+
+		.history-button {
+			background: #7c3aed;
+			border: 0;
+			border-radius: 6px;
+			color: #ffffff;
+			cursor: pointer;
+			font-size: 14px;
+			margin-top: 14px;
+			padding: 9px 18px;
+		}
+
+		.history-button:hover {
+			background: #8b5cf6;
+		}
+
+		.history-panel {
+			background: #111827;
+			border: 1px solid #374151;
+			border-radius: 8px;
+			margin-top: 12px;
+			overflow: hidden;
+			padding: 12px;
+			text-align: left;
+		}
+
+		.history-panel[hidden] {
+			display: none;
+		}
+
+		.history-table {
+			border-collapse: collapse;
+			color: #d1d5db;
+			font-size: 14px;
+			width: 100%;
+		}
+
+		.history-table th,
+		.history-table td {
+			border-bottom: 1px solid #374151;
+			padding: 8px 6px;
+			text-align: left;
+		}
+
+		.history-table th {
+			color: #93c5fd;
+			font-weight: 600;
+		}
+
+		.history-table tr:last-child td {
+			border-bottom: 0;
+		}
+
+		.history-win {
+			color: #86efac;
+		}
+
+		.history-loss {
+			color: #fca5a5;
+		}
+
+		.empty-history {
+			color: #9ca3af;
+			font-size: 14px;
+			margin: 4px 0;
+			text-align: center;
+		}
 	</style>
 	<title>主题切换示例</title>
 <style>
@@ -359,6 +426,16 @@
 			<button class="reset-button" id="resetButton" type="button">重置玩家记录</button>
 			<button class="ai-button" id="aiButton" type="button">AI演示</button>
 		</div>
+		<button class="history-button" id="historyButton" type="button" aria-expanded="false">查看战绩</button>
+		<section class="history-panel" id="historyPanel" aria-label="最近10局战绩" hidden>
+			<table class="history-table">
+				<thead>
+					<tr><th>局次</th><th>得分</th><th>结果</th><th>时间</th></tr>
+				</thead>
+				<tbody id="historyList"></tbody>
+			</table>
+			<p class="empty-history" id="emptyHistory">暂无战绩</p>
+		</section>
 		<div class="hint">请按键盘方向键移动蛇，游戏结束后按空格键重新开始</div>
 	</main>
 
@@ -373,11 +450,16 @@
 		const restartButton = document.getElementById('restartButton');
 		const resetButton = document.getElementById('resetButton');
 		const aiButton = document.getElementById('aiButton');
+		const historyButton = document.getElementById('historyButton');
+		const historyPanel = document.getElementById('historyPanel');
+		const historyList = document.getElementById('historyList');
+		const emptyHistory = document.getElementById('emptyHistory');
 		const gridSize = 20;
 		const tileCount = canvas.width / gridSize;
 		const gameSpeed = 150;
 		const highScoreStorageKey = 'snakeHighScore';
 		const aiHighScoreStorageKey = 'snakeAiHighScore';
+		const gameHistoryStorageKey = 'snakeGameHistory';
 		const movementDirections = [
 			{ x: 0, y: -1 },
 			{ x: 1, y: 0 },
@@ -395,9 +477,43 @@
 		let gameOver;
 		let gameTimer;
 		let aiMode = false;
+		let gameHistory = loadGameHistory();
 
 		highScoreElement.textContent = highScore;
 		aiHighScoreElement.textContent = aiHighScore;
+		renderGameHistory();
+
+		function loadGameHistory() {
+			try {
+				const savedHistory = JSON.parse(localStorage.getItem(gameHistoryStorageKey) || '[]');
+				return Array.isArray(savedHistory) ? savedHistory.slice(0, 10) : [];
+			} catch (error) {
+				return [];
+			}
+		}
+
+		function saveGameHistory(result) {
+			gameHistory.unshift({
+				score,
+				result,
+				time: new Date().toLocaleString('zh-CN', { hour12: false })
+			});
+			gameHistory = gameHistory.slice(0, 10);
+			localStorage.setItem(gameHistoryStorageKey, JSON.stringify(gameHistory));
+			renderGameHistory();
+		}
+
+		function renderGameHistory() {
+			historyList.innerHTML = gameHistory.map((record, index) => `
+				<tr>
+					<td>${index + 1}</td>
+					<td>${record.score}</td>
+					<td class="${record.result === '胜' ? 'history-win' : 'history-loss'}">${record.result}</td>
+					<td>${record.time}</td>
+				</tr>
+			`).join('');
+			emptyHistory.hidden = gameHistory.length > 0;
+		}
 
 		function startGame() {
             // 1. 重置蛇到初始位置
@@ -469,6 +585,10 @@
 					foodCountElement.textContent = score;
 				} else {
 					scoreElement.textContent = score;
+				}
+				if (snake.length === tileCount * tileCount) {
+					endGame('胜');
+					return;
 				}
 				placeFood();
 			} else {
@@ -639,9 +759,12 @@
 			}
 		}
 
-		function endGame() {
+		function endGame(result = '负') {
 			gameOver = true;
 			clearInterval(gameTimer);
+			if (!aiMode) {
+				saveGameHistory(result);
+			}
 			if (aiMode) {
 				if (score > aiHighScore) {
 					aiHighScore = score;
@@ -664,8 +787,17 @@
 		});
 		resetButton.addEventListener('click', () => {
 			localStorage.removeItem(highScoreStorageKey);
+			localStorage.removeItem(gameHistoryStorageKey);
 			highScore = 0;
+			gameHistory = [];
 			highScoreElement.textContent = highScore;
+			renderGameHistory();
+		});
+		historyButton.addEventListener('click', () => {
+			const isExpanded = historyPanel.hidden;
+			historyPanel.hidden = !isExpanded;
+			historyButton.textContent = isExpanded ? '收起战绩' : '查看战绩';
+			historyButton.setAttribute('aria-expanded', String(isExpanded));
 		});
 
 		document.addEventListener('keydown', (event) => {

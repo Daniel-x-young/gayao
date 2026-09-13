@@ -201,6 +201,71 @@
       box-shadow: 0 1px 0 #43847f, 0 8px 12px rgba(0, 0, 0, 0.4);
     }
 
+    .theme-btn {
+      background: #c98fca;
+      box-shadow: 0 5px 0 #875c89, 0 8px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .theme-btn:active {
+      box-shadow: 0 1px 0 #875c89, 0 8px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    body[data-theme="sunset"] {
+      background: linear-gradient(145deg, #704b55 0%, #382c3c 100%);
+    }
+
+    body[data-theme="sunset"] .game-container {
+      background: #76545b;
+    }
+
+    body[data-theme="sunset"] .status-panel,
+    body[data-theme="sunset"] .board {
+      background: #493642;
+    }
+
+    body[data-theme="sunset"] .info-item,
+    body[data-theme="sunset"] .game-state {
+      background: #302431;
+    }
+
+    body[data-theme="sunset"] .cell {
+      background: #a87972;
+      box-shadow: 0 2px 0 #694c51, 0 4px 6px rgba(0, 0, 0, 0.4);
+    }
+
+    body[data-theme="sunset"] .cell.revealed {
+      background: #f0d1b5;
+      box-shadow: inset 0 2px 4px #b99483, 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    body[data-theme="forest"] {
+      background: linear-gradient(145deg, #31584f 0%, #203b38 100%);
+    }
+
+    body[data-theme="forest"] .game-container {
+      background: #456b5d;
+    }
+
+    body[data-theme="forest"] .status-panel,
+    body[data-theme="forest"] .board {
+      background: #294840;
+    }
+
+    body[data-theme="forest"] .info-item,
+    body[data-theme="forest"] .game-state {
+      background: #1b332f;
+    }
+
+    body[data-theme="forest"] .cell {
+      background: #719184;
+      box-shadow: 0 2px 0 #45695d, 0 4px 6px rgba(0, 0, 0, 0.4);
+    }
+
+    body[data-theme="forest"] .cell.revealed {
+      background: #d0dfc9;
+      box-shadow: inset 0 2px 4px #91a98f, 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
     .game-state.win {
       color: #a3e0b0;
       background: #1e3a2a;
@@ -255,6 +320,7 @@
   <div class="board" id="board"></div>
 
   <button class="reset-btn ai-btn" id="ai-btn">🤖 AI 演示</button>
+  <button class="reset-btn theme-btn" id="theme-btn">🎨 主题：海港</button>
   <button class="reset-btn" id="reset-btn">🔄 重新开始</button>
 </div>
 
@@ -292,7 +358,29 @@
     const roundCounterEl = document.getElementById('round-counter');
     const bestTimeEl = document.getElementById('best-time');
     const resetBtn = document.getElementById('reset-btn');
+    const themeBtn = document.getElementById('theme-btn');
     const BEST_TIME_KEY = 'minesweeper-best-time';
+    const THEME_KEY = 'minesweeper-theme';
+    const themes = [
+      { id: 'harbor', label: '海港' },
+      { id: 'sunset', label: '暮色' },
+      { id: 'forest', label: '森林' }
+    ];
+
+    function applyTheme(themeId) {
+      const themeIndex = themes.findIndex((theme) => theme.id === themeId);
+      const theme = themes[themeIndex >= 0 ? themeIndex : 0];
+      document.body.dataset.theme = theme.id;
+      themeBtn.textContent = `🎨 主题：${theme.label}`;
+      localStorage.setItem(THEME_KEY, theme.id);
+    }
+
+    function switchTheme() {
+      const currentTheme = document.body.dataset.theme || themes[0].id;
+      const currentIndex = themes.findIndex((theme) => theme.id === currentTheme);
+      const nextTheme = themes[(currentIndex + 1) % themes.length];
+      applyTheme(nextTheme.id);
+    }
 
     function getBestTime() {
       const storedTime = Number(localStorage.getItem(BEST_TIME_KEY));
@@ -745,8 +833,10 @@
     });
 
     document.getElementById('ai-btn').addEventListener('click', startAi);
+    themeBtn.addEventListener('click', switchTheme);
 
     // 页面加载启动
+    applyTheme(localStorage.getItem(THEME_KEY) || 'harbor');
     startGame();
 
     // 额外修复：右键菜单阻止

@@ -143,6 +143,199 @@
 			margin-top: 12px;
 		}
 	</style>
+	<title>主题切换示例</title>
+<style>
+    /* ========== 深色主题（默认） ========== */
+    :root,
+    [data-theme="dark"] {
+        --bg:          #1a1a2e;
+        --panel-bg:    #16213e;
+        --text:        #eaeaea;
+        --text-sub:    #a0a0b0;
+        --accent:      #e94560;
+        --border:      #2a2a4a;
+        --btn-bg:      #0f3460;
+        --btn-hover:   #1a4a7a;
+        --shadow:      0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ========== 浅色主题 ========== */
+    [data-theme="light"] {
+        --bg:          #f5f5f7;
+        --panel-bg:    #ffffff;
+        --text:        #1a1a2e;
+        --text-sub:    #666677;
+        --accent:      #007bff;
+        --border:      #e0e0e5;
+        --btn-bg:      #007bff;
+        --btn-hover:   #0060cc;
+        --shadow:      0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* ========== 全局样式 ========== */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        padding: 40px 20px;
+        /* 切换时的平滑过渡 */
+        transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .panel {
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 32px 40px;
+        box-shadow: var(--shadow);
+        text-align: center;
+        min-width: 320px;
+        transition: background 0.3s ease, border-color 0.3s ease,
+                    box-shadow 0.3s ease;
+    }
+
+    h1 {
+        font-size: 24px;
+        margin-bottom: 12px;
+        color: var(--accent);
+        transition: color 0.3s ease;
+    }
+
+    p {
+        color: var(--text-sub);
+        font-size: 14px;
+        margin-bottom: 24px;
+        transition: color 0.3s ease;
+    }
+
+    /* ========== 按钮样式 ========== */
+    button {
+        font-family: inherit;
+        font-size: 15px;
+        padding: 10px 24px;
+        border: none;
+        border-radius: 8px;
+        background: var(--btn-bg);
+        color: #ffffff;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    button:hover {
+        background: var(--btn-hover);
+    }
+
+    button:active {
+        transform: scale(0.97);
+    }
+
+    /* 主题切换按钮特殊样式 */
+    #theme-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* 当前主题指示 */
+    .theme-label {
+        font-size: 13px;
+        color: var(--text-sub);
+        margin-top: 16px;
+        transition: color 0.3s ease;
+    }
+</style>
+</head>
+<body>
+
+    <div class="panel">
+        <h1>主题切换演示</h1>
+        <p>点击下方按钮切换深色 / 浅色主题，刷新后仍会保留你的选择。</p>
+
+        <button id="theme-toggle">
+            <span id="theme-icon">🌙</span>
+            <span id="theme-text">切换到浅色</span>
+        </button>
+
+        <div class="theme-label">
+            当前主题：<b id="current-theme">深色</b>
+        </div>
+    </div>
+
+<script>
+    // ============================================================
+    //  主题切换逻辑
+    // ============================================================
+
+    // 主题配置：键名对应 data-theme 的值
+    const THEMES = {
+        dark:  { icon: '🌙', label: '深色', buttonText: '切换到浅色', next: 'light' },
+        light: { icon: '☀️', label: '浅色', buttonText: '切换到深色', next: 'dark'  }
+    };
+
+    // DOM 元素引用
+    const toggleBtn    = document.getElementById('theme-toggle');
+    const themeIcon    = document.getElementById('theme-icon');
+    const themeText    = document.getElementById('theme-text');
+    const currentLabel = document.getElementById('current-theme');
+
+    /**
+     * 应用指定主题
+     * @param {string} theme - 'dark' 或 'light'
+     */
+    function applyTheme(theme) {
+        // 1. 在 <html> 上设置 data-theme 属性，CSS 变量会自动切换
+        document.documentElement.setAttribute('data-theme', theme);
+
+        // 2. 更新按钮和标签的显示
+        const config = THEMES[theme];
+        themeIcon.textContent    = config.icon;
+        themeText.textContent    = config.buttonText;
+        currentLabel.textContent = config.label;
+
+        // 3. 保存到 localStorage，刷新后可以恢复
+        localStorage.setItem('theme', theme);
+    }
+
+    /**
+     * 切换主题
+     */
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme') || 'dark';
+        const next = THEMES[current].next;
+        applyTheme(next);
+    }
+
+    /**
+     * 页面加载时恢复上次选择的主题
+     */
+    function initTheme() {
+        // 优先读取 localStorage，没有则默认深色
+        const saved = localStorage.getItem('theme');
+        const theme = (saved === 'light' || saved === 'dark') ? saved : 'dark';
+        applyTheme(theme);
+    }
+
+    // 绑定事件
+    toggleBtn.addEventListener('click', toggleTheme);
+
+    // 初始化
+    initTheme();
+</script>
+
+</body>
+</html>
 </head>
 <body>
 	<main class="game">

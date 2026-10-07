@@ -131,7 +131,7 @@ R1 与 R3 并联 = 5kΩ
 Vout = V_th × RL/(R_th+RL) = 5 × 10/25 = 2V
 
 ### 仿真验证
-完整代码见['dwn.py'](./dwn.py)
+完整代码见['dwn.py'](./circuits/dwn.py)
 
 ### 对比表
 #### 电压对比
@@ -155,7 +155,7 @@ Vout（RL=10kΩ）   2V        2.0000V         2.0000V         0
 ### 电路图
 电路图见!['原始电路'](./circuits/images/ysdl.jpg)
 !['戴维南等效电路'](./circuits/images/dwn.jpg)电路参数如下：
-## 放大电路
+## 5.放大电路
 | 参数 | 数值 |
 |------|------|
 | 电源电压 VDD | 5 V |

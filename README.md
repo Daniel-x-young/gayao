@@ -95,7 +95,7 @@
 ### 电路图
 ![RC低通滤波器电路图](https://github.com/Daniel-x-young/gayao/commit/16497018961244fa878e24cc3cd9c1e14a8d0098)
 ### Bode
-![RC电路Bode图](./circuits/images/Figure_1.png)
+![RC电路Bode图](https://github.com/Daniel-x-young/gayao/blob/main/circuits/image/dl.drawio.png)
 ### 对比表
  项目            理论值       仿真值       误差    
  截止频率 fc   1591.55 Hz    ≈1585 Hz     <0.5%
@@ -153,8 +153,8 @@ Vout（RL=10kΩ）   2V        2.0000V         2.0000V         0
 输出电压完全一致（误差 < 0.0001V），戴维南定理验证通过。
 
 ### 电路图
-电路图见!['原始电路'](./circuits/images/ysdl.jpg)
-!['戴维南等效电路'](./circuits/images/dwn.jpg)电路参数如下：
+电路图见!['原始电路'](https://github.com/Daniel-x-young/gayao/blob/main/circuits/image/ysdl.jpg)
+!['戴维南等效电路'](https://github.com/Daniel-x-young/gayao/blob/main/circuits/image/dwn.jpg)
 ## 5.放大电路
 | 参数 | 数值 |
 |------|------|
@@ -162,8 +162,7 @@ Vout（RL=10kΩ）   2V        2.0000V         2.0000V         0
 | 栅上偏置电阻 Rg1 | 60 kΩ |
 | 栅下偏置电阻 Rg2 | 40 kΩ |
 | 漏极电阻 Rd | 2 kΩ |
-| 输入耦合电容 Cb1 | 足够大（直流开路、交流短路） |
-| NMOS 参数 K | 0.8 mA/V² |
+| 输入耦合电容 Cb1 | 足够大（直流开路、交流短路） 
 | NMOS 阈值电压 Vth | 1 V |
 | NMOS 沟道长度调制系数 λ | 0.02 /V |
 | 输入信号 Vi | 10 mV / 1 kHz 正弦波 |

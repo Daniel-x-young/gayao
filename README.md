@@ -93,7 +93,7 @@
 ### 仿真验证
 使用 PySpice 进行 AC 扫频分析（1Hz~1MHz），代码见pyspice.py
 ### 电路图
-![RC低通滤波器电路图](./circuits/images/dl.drawio.png)
+![RC低通滤波器电路图](https://github.com/Daniel-x-young/gayao/commit/16497018961244fa878e24cc3cd9c1e14a8d0098)
 ### Bode
 ![RC电路Bode图](./circuits/images/Figure_1.png)
 ### 对比表
